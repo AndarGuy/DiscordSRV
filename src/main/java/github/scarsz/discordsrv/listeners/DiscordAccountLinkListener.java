@@ -26,6 +26,8 @@ import github.scarsz.discordsrv.Debug;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.api.events.DiscordPrivateMessageReceivedEvent;
 import github.scarsz.discordsrv.util.DiscordUtil;
+import me.andarguy.cc.bukkit.CCBukkit;
+import me.andarguy.cc.common.models.UserAccount;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
@@ -50,15 +52,15 @@ public class DiscordAccountLinkListener extends ListenerAdapter {
 
     public void onGuildMemberJoin(GuildMemberJoinEvent event) {
         // add linked role and nickname back to people when they rejoin the server
-        UUID uuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(event.getUser().getId());
-        if (uuid != null) {
+        Integer userId = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(event.getUser().getId());
+        if (userId != null) {
+            UserAccount userAccount = CCBukkit.getApi().getUserAccount(userId);
             Role roleToAdd = DiscordUtil.resolveRole(DiscordSRV.config().getString("MinecraftDiscordAccountLinkedRoleNameToAddUserTo"));
             if (roleToAdd != null) DiscordUtil.addRoleToMember(event.getMember(), roleToAdd);
             else DiscordSRV.debug(Debug.GROUP_SYNC, "Couldn't add user to null role");
 
             if (DiscordSRV.config().getBoolean("NicknameSynchronizationEnabled")) {
-                OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
-                DiscordSRV.getPlugin().getNicknameUpdater().setNickname(event.getMember(), player);
+                DiscordSRV.getPlugin().getNicknameUpdater().setNickname(event.getMember(), userAccount);
             }
         }
     }

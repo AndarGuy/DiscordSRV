@@ -27,6 +27,7 @@ import github.scarsz.discordsrv.objects.managers.AccountLinkManager;
 import github.scarsz.discordsrv.objects.managers.link.JdbcAccountLinkManager;
 import github.scarsz.discordsrv.util.DiscordUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
+import me.andarguy.cc.bukkit.CCBukkit;
 import me.clip.placeholderapi.PlaceholderAPIPlugin;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -73,7 +74,7 @@ public class PlaceholderAPIExpansion extends PlaceholderExpansion {
                 }
                 return Collections.emptySet();
             }
-            return accountLinkManager.getLinkedAccounts().keySet();
+            return accountLinkManager.getLinkedUsers().keySet();
         };
 
         switch (identifier) {
@@ -112,12 +113,12 @@ public class PlaceholderAPIExpansion extends PlaceholderExpansion {
             case "linked_online":
                 return String.valueOf(linkedAccounts.get().stream().filter(onlineMemberIds::contains).count());
             case "linked_total":
-                return String.valueOf(accountLinkManager.getLinkedAccountCount());
+                return String.valueOf(accountLinkManager.getLinkedUsersCount());
         }
 
         if (player == null) return "";
 
-        String userId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdBypassCache(player.getUniqueId());
+        String userId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdBypassCache(CCBukkit.getApi().getPlayerAccount(player.getUniqueId()).getUserId());
         switch (identifier) {
             case "user_id":
                 return orEmptyString(userId);

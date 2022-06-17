@@ -26,6 +26,8 @@ import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.util.DiscordUtil;
 import github.scarsz.discordsrv.util.LangUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
+import me.andarguy.cc.bukkit.CCBukkit;
+import me.andarguy.cc.common.models.UserAccount;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringUtils;
@@ -60,14 +62,14 @@ public class CommandUnlink {
             }
 
             Player player = (Player) sender;
-            String linkedId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(player.getUniqueId());
+            String linkedId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(CCBukkit.getApi().getPlayerAccount(player.getUniqueId()).getUserId());
             boolean hasLinkedAccount = linkedId != null;
 
             if (hasLinkedAccount) {
                 Member member = DiscordUtil.getMemberById(linkedId);
                 String name = member != null ? member.getEffectiveName() : "Discord ID " + linkedId;
 
-                DiscordSRV.getPlugin().getAccountLinkManager().unlink(player.getUniqueId());
+                DiscordSRV.getPlugin().getAccountLinkManager().unlink(CCBukkit.getApi().getPlayerAccount(player.getUniqueId()).getUserId());
                 MessageUtil.sendMessage(sender, LangUtil.Message.UNLINK_SUCCESS.toString().replace("%name%", name));
             } else {
                 MessageUtil.sendMessage(sender, LangUtil.Message.LINK_FAIL_NOT_ASSOCIATED_WITH_AN_ACCOUNT.toString());
@@ -86,7 +88,7 @@ public class CommandUnlink {
                 notifyInterpret(sender, "UUID");
                 OfflinePlayer player = Bukkit.getOfflinePlayer(UUID.fromString(target));
                 notifyPlayer(sender, player);
-                String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(player.getUniqueId());
+                String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(CCBukkit.getApi().getPlayerAccount(player.getUniqueId()).getUserId());
                 notifyDiscord(sender, discordId);
                 if (discordId != null) {
                     DiscordSRV.getPlugin().getAccountLinkManager().unlink(discordId);
@@ -97,11 +99,14 @@ public class CommandUnlink {
                     (StringUtils.isNumeric(target) && target.length() >= 17 && target.length() <= 20)) {
                 // target is a Discord ID
                 notifyInterpret(sender, "Discord ID");
-                UUID uuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(target);
-                notifyPlayer(sender, uuid != null ? Bukkit.getOfflinePlayer(uuid) : null);
+                Integer userId = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(target);
+                UserAccount userAccount = CCBukkit.getApi().getUserAccount(userId);
                 notifyDiscord(sender, target);
-                if (uuid != null) {
-                    DiscordSRV.getPlugin().getAccountLinkManager().unlink(uuid);
+                userAccount.getLinkedPlayers().forEach((playerAccount -> {
+                    notifyPlayer(sender, playerAccount != null ? Bukkit.getOfflinePlayer(playerAccount.getUuid()) : null);
+                }));
+                if (userId != null) {
+                    DiscordSRV.getPlugin().getAccountLinkManager().unlink(userId);
                     notifyUnlinked(sender);
                 }
                 return;
@@ -117,9 +122,10 @@ public class CommandUnlink {
                         // found them
                         notifyInterpret(sender, "Minecraft player");
                         notifyPlayer(sender, player);
-                        notifyDiscord(sender, DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(player.getUniqueId()));
+                        Integer userId = CCBukkit.getApi().getPlayerAccount(player.getUniqueId()).getUserId();
+                        notifyDiscord(sender, DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(userId));
 
-                        DiscordSRV.getPlugin().getAccountLinkManager().unlink(player.getUniqueId());
+                        DiscordSRV.getPlugin().getAccountLinkManager().unlink(userId);
                         notifyUnlinked(sender);
                         return;
                     }
@@ -143,9 +149,13 @@ public class CommandUnlink {
                         if (matches.size() == 1) {
                             User user = matches.iterator().next();
                             notifyDiscord(sender, user.getId());
-                            UUID uuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(user.getId());
-                            if (uuid != null) {
-                                notifyPlayer(sender, Bukkit.getOfflinePlayer(uuid));
+
+                            Integer userId = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(target);
+                            UserAccount userAccount = CCBukkit.getApi().getUserAccount(userId);
+                            if (userAccount != null) {
+                                userAccount.getLinkedPlayers().forEach((playerAccount -> {
+                                    notifyPlayer(sender, Bukkit.getOfflinePlayer(playerAccount.getUuid()));
+                                }));
                                 DiscordSRV.getPlugin().getAccountLinkManager().unlink(user.getId());
                                 notifyUnlinked(sender);
                             } else {
@@ -153,8 +163,12 @@ public class CommandUnlink {
                             }
                         } else {
                             matches.stream().limit(5).forEach(user -> {
-                                UUID uuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(user.getId());
-                                notifyPlayer(sender, uuid != null ? Bukkit.getOfflinePlayer(uuid) : null);
+                                Integer userId = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(user.getId());
+                                UserAccount userAccount = CCBukkit.getApi().getUserAccount(userId);
+                                userAccount.getLinkedPlayers().forEach((playerAccount -> {
+                                    notifyPlayer(sender, playerAccount != null ? Bukkit.getOfflinePlayer(playerAccount.getUuid()) : null);
+                                }));
+
                                 notifyDiscord(sender, user.getId());
                             });
 

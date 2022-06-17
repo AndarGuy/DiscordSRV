@@ -27,6 +27,9 @@ import github.scarsz.discordsrv.util.DiscordUtil;
 import github.scarsz.discordsrv.util.LangUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
 import github.scarsz.discordsrv.util.PrettyUtil;
+import me.andarguy.cc.bukkit.CCBukkit;
+import me.andarguy.cc.common.models.PlayerAccount;
+import me.andarguy.cc.common.models.UserAccount;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringUtils;
@@ -59,8 +62,8 @@ public class CommandLinked {
                 );
                 return;
             }
-
-            String linkedId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(((Player) sender).getUniqueId());
+            PlayerAccount playerAccount = CCBukkit.getApi().getPlayerAccount(sender.getName());
+            String linkedId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(playerAccount.getUserId());
             boolean hasLinkedAccount = linkedId != null;
 
             if (hasLinkedAccount) {
@@ -85,14 +88,16 @@ public class CommandLinked {
                 notifyInterpret(sender, "UUID");
                 OfflinePlayer player = Bukkit.getOfflinePlayer(UUID.fromString(target));
                 notifyPlayer(sender, player);
-                notifyDiscord(sender, DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(player.getUniqueId()));
+                PlayerAccount playerAccount = CCBukkit.getApi().getPlayerAccount(player.getUniqueId());
+                notifyDiscord(sender, DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(playerAccount.getUserId()));
                 return;
             } else if (args.length == 1 && DiscordUtil.getUserById(target) != null ||
                     (StringUtils.isNumeric(target) && target.length() >= 17 && target.length() <= 20)) {
                 // target is a Discord ID
                 notifyInterpret(sender, "Discord ID");
-                UUID uuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(target);
-                notifyPlayer(sender, uuid != null ? Bukkit.getOfflinePlayer(uuid) : null);
+                Integer userId = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(target);
+                UserAccount userAccount = CCBukkit.getApi().getUserAccount(userId);
+                userAccount.getLinkedPlayers().forEach((playerAccount -> notifyPlayer(sender, userId != null ? Bukkit.getOfflinePlayer(playerAccount.getUuid()) : null)));
                 notifyDiscord(sender, target);
                 return;
             } else {
@@ -123,7 +128,8 @@ public class CommandLinked {
                         // found them
                         notifyInterpret(sender, "Minecraft player");
                         notifyPlayer(sender, player);
-                        notifyDiscord(sender, DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(player.getUniqueId()));
+                        PlayerAccount playerAccount = CCBukkit.getApi().getPlayerAccount(sender.getName());
+                        notifyDiscord(sender, DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(playerAccount.getUserId()));
                         return;
                     }
                 }
@@ -145,8 +151,10 @@ public class CommandLinked {
                         notifyInterpret(sender, "Discord name");
 
                         matches.stream().limit(5).forEach(user -> {
-                            UUID uuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(user.getId());
-                            notifyPlayer(sender, uuid != null ? Bukkit.getOfflinePlayer(uuid) : null);
+                            Integer userId = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(user.getId());
+                            UserAccount userAccount = CCBukkit.getApi().getUserAccount(userId);
+                            userAccount.getLinkedPlayers().forEach((playerAccount -> notifyPlayer(sender, userId != null ? Bukkit.getOfflinePlayer(playerAccount.getUuid()) : null)));
+
                             notifyDiscord(sender, user.getId());
                         });
 

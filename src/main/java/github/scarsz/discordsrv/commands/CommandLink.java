@@ -28,6 +28,7 @@ import github.scarsz.discordsrv.util.DiscordUtil;
 import github.scarsz.discordsrv.util.GamePermissionUtil;
 import github.scarsz.discordsrv.util.LangUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
+import me.andarguy.cc.bukkit.CCBukkit;
 import net.dv8tion.jda.api.entities.User;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -102,7 +103,7 @@ public class CommandLink {
                 return;
             }
 
-            DiscordSRV.getPlugin().getAccountLinkManager().link(user.getId(), offlinePlayer.getUniqueId());
+            DiscordSRV.getPlugin().getAccountLinkManager().link(user.getId(), CCBukkit.getApi().getPlayerAccount(offlinePlayer.getUniqueId()).getUserId());
             MessageUtil.sendMessage(sender, ChatColor.GREEN + "Linked together " + ChatColor.GOLD + offlinePlayer.getName()
                     + ChatColor.GREEN + " and " + ChatColor.GOLD + user.getAsTag());
             return;
@@ -119,10 +120,12 @@ public class CommandLink {
                 .filter(entry -> entry.getValue().equals(player.getUniqueId()))
                 .forEach(match -> manager.getLinkingCodes().remove(match.getKey()));
 
-        if (manager.getDiscordId(player.getUniqueId()) != null) {
+        Integer userId = CCBukkit.getApi().getPlayerAccount(player.getUniqueId()).getUserId();
+
+        if (manager.getDiscordId(userId) != null) {
             MessageUtil.sendMessage(sender, LangUtil.Message.ACCOUNT_ALREADY_LINKED.toString());
         } else {
-            String code = manager.generateCode(player.getUniqueId());
+            String code = manager.generateCode(userId);
 
             Component component = LegacyComponentSerializer.builder().character('&').extractUrls().build().deserialize(
                     LangUtil.Message.CODE_GENERATED.toString()

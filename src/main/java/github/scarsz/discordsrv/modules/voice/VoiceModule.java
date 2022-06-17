@@ -27,6 +27,9 @@ import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.util.DiscordUtil;
 import github.scarsz.discordsrv.util.PlayerUtil;
 import lombok.Getter;
+import me.andarguy.cc.bukkit.CCBukkit;
+import me.andarguy.cc.common.models.PlayerAccount;
+import me.andarguy.cc.common.models.UserAccount;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.channel.voice.VoiceChannelDeleteEvent;
@@ -252,40 +255,43 @@ public class VoiceModule extends ListenerAdapter implements Listener {
             }
 
             for (Member member : members) {
-                UUID uuid = getUniqueId(member);
+                Set<UUID> uuids = getUserId(member);
                 VoiceChannel playerChannel = member.getVoiceState().getChannel();
 
-                Network playerNetwork = uuid != null ? networks.stream()
-                        .filter(n -> n.contains(uuid))
-                        .findAny().orElse(null) : null;
+                for (UUID uuid : uuids) {
+                    Network playerNetwork = uuid != null ? networks.stream()
+                            .filter(n -> n.contains(uuid))
+                            .findAny().orElse(null) : null;
 
-                VoiceChannel shouldBeInChannel;
-                if (playerNetwork != null) {
-                    if (playerNetwork.getChannel() == null) {
-                        // isn't yet created, we can wait until next tick
-                        continue;
+                    VoiceChannel shouldBeInChannel;
+                    if (playerNetwork != null) {
+                        if (playerNetwork.getChannel() == null) {
+                            // isn't yet created, we can wait until next tick
+                            continue;
+                        }
+
+                        shouldBeInChannel = playerNetwork.getChannel();
+                    } else {
+                        shouldBeInChannel = lobbyChannel;
                     }
 
-                    shouldBeInChannel = playerNetwork.getChannel();
-                } else {
-                    shouldBeInChannel = lobbyChannel;
-                }
 
-                Pair<String, CompletableFuture<Void>> awaitingMove = awaitingMoves.get(member.getId());
-                // they're already where they're suppose to be
-                if (awaitingMove != null && awaitingMove.getLeft().equals(shouldBeInChannel.getId())) continue;
+                    Pair<String, CompletableFuture<Void>> awaitingMove = awaitingMoves.get(member.getId());
+                    // they're already where they're suppose to be
+                    if (awaitingMove != null && awaitingMove.getLeft().equals(shouldBeInChannel.getId())) continue;
 
-                // if the cancel succeeded we can move them
-                if (awaitingMove != null && !awaitingMove.getLeft().equals(shouldBeInChannel.getId())
-                        && !awaitingMove.getRight().cancel(false)) continue;
+                    // if the cancel succeeded we can move them
+                    if (awaitingMove != null && !awaitingMove.getLeft().equals(shouldBeInChannel.getId())
+                            && !awaitingMove.getRight().cancel(false)) continue;
 
-                // schedule a move to the channel they're suppose to be in, if they aren't there yet
-                if (!playerChannel.getId().equals(shouldBeInChannel.getId())) {
-                    awaitingMoves.put(member.getId(), Pair.of(
-                            shouldBeInChannel.getId(),
-                            getGuild().moveVoiceMember(member, shouldBeInChannel)
-                                    .submit().whenCompleteAsync((v, t) -> awaitingMoves.remove(member.getId()))
-                    ));
+                    // schedule a move to the channel they're suppose to be in, if they aren't there yet
+                    if (!playerChannel.getId().equals(shouldBeInChannel.getId())) {
+                        awaitingMoves.put(member.getId(), Pair.of(
+                                shouldBeInChannel.getId(),
+                                getGuild().moveVoiceMember(member, shouldBeInChannel)
+                                        .submit().whenCompleteAsync((v, t) -> awaitingMoves.remove(member.getId()))
+                        ));
+                    }
                 }
             }
 
@@ -335,24 +341,30 @@ public class VoiceModule extends ListenerAdapter implements Listener {
         checkMutedUser(event.getChannelJoined(), event.getMember());
         if (!event.getChannelJoined().equals(getLobbyChannel())) return;
 
-        UUID uuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(event.getMember().getUser().getId());
-        if (uuid == null) return;
-        OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
-        if (player.isOnline()) markDirty(player.getPlayer());
+        Integer userId = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(event.getMember().getUser().getId());
+        if (userId == null) return;
+        UserAccount userAccount = CCBukkit.getApi().getUserAccount(userId);
+        userAccount.getLinkedPlayers().forEach((playerAccount -> {
+            OfflinePlayer player = Bukkit.getOfflinePlayer(playerAccount.getUuid());
+            if (player.isOnline()) markDirty(player.getPlayer());
+        }));
     }
 
     @Override
     public void onGuildVoiceMove(GuildVoiceMoveEvent event) {
         if (event.getChannelJoined().getParent() != null && !event.getChannelJoined().getParent().equals(getCategory()) &&
                 event.getChannelLeft().getParent() != null && event.getChannelLeft().getParent().equals(getCategory())) {
-            UUID uuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(event.getMember().getUser().getId());
-            if (uuid == null) return;
-            OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
-            if (player.isOnline()) {
-                networks.stream()
-                        .filter(network -> network.contains(player.getPlayer().getUniqueId()))
-                        .forEach(network -> network.remove(player.getPlayer()));
-            }
+            Integer userId = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(event.getMember().getUser().getId());
+            if (userId == null) return;
+            UserAccount userAccount = CCBukkit.getApi().getUserAccount(userId);
+            userAccount.getLinkedPlayers().forEach((playerAccount -> {
+                OfflinePlayer player = Bukkit.getOfflinePlayer(playerAccount.getUuid());
+                if (player.isOnline()) {
+                    networks.stream()
+                            .filter(network -> network.contains(player.getPlayer().getUniqueId()))
+                            .forEach(network -> network.remove(player.getPlayer()));
+                }
+            }));
         }
         checkMutedUser(event.getChannelJoined(), event.getMember());
     }
@@ -362,14 +374,17 @@ public class VoiceModule extends ListenerAdapter implements Listener {
         checkMutedUser(event.getChannelJoined(), event.getMember());
         if (event.getChannelLeft().getParent() == null || !event.getChannelLeft().getParent().equals(getCategory())) return;
 
-        UUID uuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(event.getMember().getUser().getId());
-        if (uuid == null) return;
-        OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
-        if (player.isOnline()) {
-            networks.stream()
-                    .filter(network -> network.contains(player.getPlayer()))
-                    .forEach(network -> network.remove(player.getPlayer()));
-        }
+        Integer userId = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(event.getMember().getUser().getId());
+        if (userId == null) return;
+        UserAccount userAccount = CCBukkit.getApi().getUserAccount(userId);
+        userAccount.getLinkedPlayers().forEach((playerAccount -> {
+            OfflinePlayer player = Bukkit.getOfflinePlayer(playerAccount.getUuid());
+            if (player.isOnline()) {
+                networks.stream()
+                        .filter(network -> network.contains(player.getPlayer()))
+                        .forEach(network -> network.remove(player.getPlayer()));
+            }
+        }));
     }
 
     @Override
@@ -440,12 +455,12 @@ public class VoiceModule extends ListenerAdapter implements Listener {
     }
 
     public static Member getMember(UUID player) {
-        String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(player);
+        String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(CCBukkit.getApi().getPlayerAccount(player).getUserId());
         return discordId != null ? getGuild().getMemberById(discordId) : null;
     }
 
-    public static UUID getUniqueId(Member member) {
-        return DiscordSRV.getPlugin().getAccountLinkManager().getUuid(member.getId());
+    public static Set<UUID> getUserId(Member member) {
+        return CCBukkit.getApi().getUserAccount(DiscordSRV.getPlugin().getAccountLinkManager().getUserId(member.getId())).getLinkedPlayers().stream().map(PlayerAccount::getUuid).collect(Collectors.toSet());
     }
 
     public static double verticalDistance(Location location1, Location location2) {

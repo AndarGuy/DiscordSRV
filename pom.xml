@@ -725,6 +725,22 @@
             <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>me.andarguy.cc</groupId>
+            <artifactId>bukkit</artifactId>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/../CCBukkit/build/libs/CCBukkit-1.0-SNAPSHOT.jar</systemPath>
+            <version>1.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>me.andarguy</groupId>
+            <artifactId>chattweaks</artifactId>
+            <scope>system</scope>
+            <systemPath>/Users/mikhail/Desktop/Minecraft Server/Stable Server/plugins/ChatTweaks.jar</systemPath>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 
 </project>

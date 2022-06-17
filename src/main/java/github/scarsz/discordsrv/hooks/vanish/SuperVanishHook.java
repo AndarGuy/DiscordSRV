@@ -31,6 +31,8 @@ import github.scarsz.discordsrv.objects.MessageFormat;
 import github.scarsz.discordsrv.util.GamePermissionUtil;
 import github.scarsz.discordsrv.util.LangUtil;
 import github.scarsz.discordsrv.util.PluginUtil;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -71,7 +73,7 @@ public class SuperVanishHook implements VanishHook {
 
         // schedule command to run in a second to be able to capture display name
         Bukkit.getScheduler().runTaskLaterAsynchronously(DiscordSRV.getPlugin(), () ->
-                DiscordSRV.getPlugin().sendJoinMessage(event.getPlayer(), joinMessage), 20);
+                DiscordSRV.getPlugin().sendJoinMessage(event.getPlayer(), Component.text(joinMessage)), 20);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -103,7 +105,7 @@ public class SuperVanishHook implements VanishHook {
 
         // player doesn't have silent quit, show quit message
         Bukkit.getScheduler().runTaskAsynchronously(DiscordSRV.getPlugin(),
-                () -> DiscordSRV.getPlugin().sendLeaveMessage(event.getPlayer(), joinMessage));
+                () -> DiscordSRV.getPlugin().sendLeaveMessage(event.getPlayer(), Component.text(joinMessage)));
     }
 
     @Override

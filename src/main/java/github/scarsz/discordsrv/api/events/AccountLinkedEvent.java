@@ -35,11 +35,11 @@ import java.util.UUID;
  */
 public class AccountLinkedEvent extends Event {
 
-    @Getter private final OfflinePlayer player;
+    @Getter private final Integer userId;
     @Getter private final User user;
 
-    public AccountLinkedEvent(User user, UUID playerUuid) {
-        this.player = Bukkit.getOfflinePlayer(playerUuid);
+    public AccountLinkedEvent(User user, Integer userId) {
+        this.userId = userId;
         this.user = user;
     }
 

@@ -2,7 +2,7 @@
  * LICENSE
  * DiscordSRV
  * -------------
- * Copyright (C) 2016 - 2021 Austin "Scarsz" Shapiro
+ * Copyright (C) 2016 - 2022 Austin "Scarsz" Shapiro
  * -------------
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
@@ -20,22 +20,14 @@
  * END
  */
 
-package github.scarsz.discordsrv.hooks.chat;
+package github.scarsz.discordsrv.objects;
 
-import github.scarsz.discordsrv.hooks.PluginHook;
-import github.scarsz.discordsrv.util.MessageUtil;
-import net.dv8tion.jda.api.entities.User;
-import net.kyori.adventure.text.Component;
+import java.util.List;
+import java.util.UUID;
 
-public interface ChatHook extends PluginHook {
-
-    @Deprecated
-    default void broadcastMessageToChannel(String channel, String message) {
-        throw new UnsupportedOperationException(getClass().getName() + " has no implementation for broadcastMessageToChannel");
-    }
-
-    default void broadcastMessageToChannel(String channel, Component message, User author) {
-        broadcastMessageToChannel(channel, MessageUtil.toLegacy(message));
-    }
-
+public class Account {
+    private int id;
+    String username;
+    String discordId;
+    List<UUID> linkedAccounts;
 }

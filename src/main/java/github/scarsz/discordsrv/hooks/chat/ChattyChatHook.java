@@ -28,6 +28,7 @@ import github.scarsz.discordsrv.util.LangUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
 import github.scarsz.discordsrv.util.PlayerUtil;
 import github.scarsz.discordsrv.util.PluginUtil;
+import net.dv8tion.jda.api.entities.User;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -49,7 +50,7 @@ public class ChattyChatHook implements ChatHook {
     }
 
     @Override
-    public void broadcastMessageToChannel(String channel, Component message) {
+    public void broadcastMessageToChannel(String channel, Component message, User author) {
         ChattyApi api = getApi();
         if (api == null) return;
 

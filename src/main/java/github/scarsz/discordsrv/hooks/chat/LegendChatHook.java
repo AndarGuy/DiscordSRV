@@ -30,6 +30,7 @@ import github.scarsz.discordsrv.util.LangUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
 import github.scarsz.discordsrv.util.PlayerUtil;
 import github.scarsz.discordsrv.util.PluginUtil;
+import net.dv8tion.jda.api.entities.User;
 import net.kyori.adventure.text.Component;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.event.EventHandler;
@@ -47,7 +48,7 @@ public class LegendChatHook implements ChatHook {
     }
 
     @Override
-    public void broadcastMessageToChannel(String channelName, Component message) {
+    public void broadcastMessageToChannel(String channelName, Component message, User author) {
         Channel chatChannel = getChannelByCaseInsensitiveName(channelName);
         if (chatChannel == null) return; // no suitable channel found
         String legacy = MessageUtil.toLegacy(message);

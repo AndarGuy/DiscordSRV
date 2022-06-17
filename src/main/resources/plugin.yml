@@ -12,6 +12,8 @@ loadbefore: [
   StaffPlus # Log4j conflicts with older versions
 ]
 softdepend: [
+  # CAMEL plugins
+  CC, ChatTweaks,
   # Chat plugins
   Herochat, Legendchat, LunaChat, TownyChat, VentureChat,
   # Vanish plugins

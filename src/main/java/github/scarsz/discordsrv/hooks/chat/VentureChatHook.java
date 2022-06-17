@@ -35,6 +35,7 @@ import mineverse.Aust1n46.chat.channel.ChatChannel;
 import mineverse.Aust1n46.chat.utilities.Format;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.User;
 import net.kyori.adventure.text.Component;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
@@ -215,7 +216,7 @@ public class VentureChatHook implements ChatHook {
     }
 
     @Override
-    public void broadcastMessageToChannel(String channel, Component component) {
+    public void broadcastMessageToChannel(String channel, Component component, User author) {
         ChatChannel chatChannel = ChatChannel.getChannel(channel); // case in-sensitive
         if (chatChannel == null) {
             DiscordSRV.debug(Debug.DISCORD_TO_MINECRAFT, "Attempted to broadcast message to channel \"" + channel + "\" but the channel doesn't exist (returned null); aborting message send");

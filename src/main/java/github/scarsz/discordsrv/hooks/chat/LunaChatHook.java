@@ -33,6 +33,7 @@ import github.scarsz.discordsrv.util.LangUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
 import github.scarsz.discordsrv.util.PlayerUtil;
 import github.scarsz.discordsrv.util.PluginUtil;
+import net.dv8tion.jda.api.entities.User;
 import net.kyori.adventure.text.Component;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.entity.Player;
@@ -56,7 +57,7 @@ public class LunaChatHook implements ChatHook {
     }
 
     @Override
-    public void broadcastMessageToChannel(String channel, Component message) {
+    public void broadcastMessageToChannel(String channel, Component message, User author) {
         Channel chatChannel = LunaChatBukkit.getInstance().getLunaChatAPI().getChannel(channel);
         DiscordSRV.debug(Debug.DISCORD_TO_MINECRAFT, "Resolved LunaChat channel " + channel + " -> " + chatChannel + (chatChannel != null ? " (" + chatChannel.getName() + ")" : ""));
         if (chatChannel == null) return; // no suitable channel found

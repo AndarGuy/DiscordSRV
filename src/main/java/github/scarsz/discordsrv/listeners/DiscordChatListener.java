@@ -31,6 +31,8 @@ import github.scarsz.discordsrv.hooks.VaultHook;
 import github.scarsz.discordsrv.hooks.world.MultiverseCoreHook;
 import github.scarsz.discordsrv.objects.SingleCommandSender;
 import github.scarsz.discordsrv.util.*;
+import me.andarguy.cc.bukkit.CCBukkit;
+import me.andarguy.cc.common.models.PlayerAccount;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
@@ -51,6 +53,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static github.scarsz.discordsrv.util.MessageFormatResolver.getMessageFormat;
 
@@ -95,7 +98,7 @@ public class DiscordChatListener extends ListenerAdapter {
                 return;
             }
 
-            boolean hasLinkedAccount = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(event.getAuthor().getId()) != null;
+            boolean hasLinkedAccount = DiscordSRV.getPlugin().getAccountLinkManager().getUserId(event.getAuthor().getId()) != null;
             if (!hasLinkedAccount && !event.getAuthor().isBot()) {
                 LangUtil.Message formatOption = LangUtil.Message.LINKED_ACCOUNT_REQUIRED;
                 String format = formatOption.toString();
@@ -250,12 +253,6 @@ public class DiscordChatListener extends ListenerAdapter {
             message = EmojiParser.parseToAliases(message);
         }
 
-        // apply placeholder API values
-        OfflinePlayer authorPlayer = null;
-        UUID authorLinkedUuid = DiscordSRV.getPlugin().getAccountLinkManager().getUuid(event.getAuthor().getId());
-        if (authorLinkedUuid != null) authorPlayer = Bukkit.getOfflinePlayer(authorLinkedUuid);
-
-        formatMessage = PlaceholderUtil.replacePlaceholders(formatMessage, authorPlayer);
         Component component = MessageUtil.toComponent(formatMessage);
         String finalMessage = message;
         component = replaceRoleColorAndMessage(component, finalMessage, topRole != null ? topRole.getColorRaw() : DiscordUtil.DISCORD_DEFAULT_COLOR_RGB);

@@ -28,8 +28,10 @@ import github.scarsz.discordsrv.api.events.AchievementMessagePostProcessEvent;
 import github.scarsz.discordsrv.api.events.AchievementMessagePreProcessEvent;
 import github.scarsz.discordsrv.objects.MessageFormat;
 import github.scarsz.discordsrv.util.*;
+import me.andarguy.awesomerewards.utils.AdvancementUtils;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.TextChannel;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
@@ -73,9 +75,15 @@ public class PlayerAdvancementDoneListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerAdvancementDone(PlayerAdvancementDoneEvent event) {
+        final int EXPERIENCE_THRESHOLD = 35;
+
+        System.out.println(MiniMessage.miniMessage().serialize(event.message()));
+
         Player player = event.getPlayer();
         // return if advancement or player objects are knackered because this can apparently happen for some reason
         if (event.getAdvancement() == null || event.getAdvancement().getKey().getKey().contains("recipe/") || player == null) return;
+
+        if (AdvancementUtils.getExperience(event.getAdvancement()) < EXPERIENCE_THRESHOLD) return;
 
         // respect invisibility plugins
         if (PlayerUtil.isVanished(player)) return;
@@ -135,6 +143,7 @@ public class PlayerAdvancementDoneListener implements Listener {
             if (content == null) return null;
             content = content
                     .replaceAll("%time%|%date%", TimeUtil.timeStamp())
+                    .replace("%message%", MessageUtil.toLegacy(event.message()))
                     .replace("%username%", needsEscape ? DiscordUtil.escapeMarkdown(player.getName()) : player.getName())
                     .replace("%displayname%", needsEscape ? DiscordUtil.escapeMarkdown(displayName) : displayName)
                     .replace("%usernamenoescapes%", player.getName())

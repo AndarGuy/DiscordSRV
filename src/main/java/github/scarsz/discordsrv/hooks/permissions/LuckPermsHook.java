@@ -29,6 +29,7 @@ import github.scarsz.discordsrv.objects.managers.AccountLinkManager;
 import github.scarsz.discordsrv.objects.managers.GroupSynchronizationManager;
 import github.scarsz.discordsrv.util.DiscordUtil;
 import github.scarsz.discordsrv.util.PluginUtil;
+import me.andarguy.cc.bukkit.CCBukkit;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -98,10 +99,9 @@ public class LuckPermsHook implements PluginHook, net.luckperms.api.context.Cont
 
     private void handle(UUID user) {
         if (!DiscordSRV.getPlugin().isGroupRoleSynchronizationEnabled()) return;
-        OfflinePlayer player = Bukkit.getOfflinePlayer(user);
         Bukkit.getScheduler().runTaskLaterAsynchronously(DiscordSRV.getPlugin(),
                 () -> DiscordSRV.getPlugin().getGroupSynchronizationManager().resync(
-                        player,
+                        CCBukkit.getApi().getUserAccount(CCBukkit.getApi().getPlayerAccount(user).getUserId()),
                         GroupSynchronizationManager.SyncDirection.TO_DISCORD,
                         GroupSynchronizationManager.SyncCause.MINECRAFT_GROUP_EDIT_API
                 ),
@@ -121,20 +121,21 @@ public class LuckPermsHook implements PluginHook, net.luckperms.api.context.Cont
     @Override
     public void calculate(@NonNull Player target, net.luckperms.api.context.ContextConsumer consumer) {
         UUID uuid = target.getUniqueId();
+        Integer userId = CCBukkit.getApi().getPlayerAccount(uuid).getUserId();
         AccountLinkManager accountLinkManager = DiscordSRV.getPlugin().getAccountLinkManager();
-        if (!accountLinkManager.isInCache(uuid)) {
+        if (!accountLinkManager.isInCache(userId)) {
             // this *shouldn't* happen
             DiscordSRV.debug(Debug.LP_CONTEXTS, "Player " + target + " was not in cache when LP contexts were requested, unable to provide contexts data (online player: " + Bukkit.getPlayer(uuid) + ")");
             return;
         }
-        String userId = accountLinkManager.getDiscordIdFromCache(uuid);
-        consumer.accept(CONTEXT_LINKED, Boolean.toString(userId != null));
+        String discordId = accountLinkManager.getDiscordIdFromCache(userId);
+        consumer.accept(CONTEXT_LINKED, Boolean.toString(discordId != null));
 
-        if (userId == null) {
+        if (discordId == null) {
             return;
         }
 
-        User user = DiscordUtil.getJda().getUserById(userId);
+        User user = DiscordUtil.getJda().getUserById(discordId);
         if (user == null) return;
 
         for (Guild guild : DiscordUtil.getJda().getGuilds()) {
@@ -148,7 +149,7 @@ public class LuckPermsHook implements PluginHook, net.luckperms.api.context.Cont
             return;
         }
 
-        Member member = mainGuild.getMemberById(userId);
+        Member member = mainGuild.getMemberById(discordId);
         if (member == null) {
             return;
         }

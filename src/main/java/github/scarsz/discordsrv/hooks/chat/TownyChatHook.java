@@ -31,6 +31,7 @@ import github.scarsz.discordsrv.util.LangUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
 import github.scarsz.discordsrv.util.PlayerUtil;
 import github.scarsz.discordsrv.util.PluginUtil;
+import net.dv8tion.jda.api.entities.User;
 import net.kyori.adventure.text.Component;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
@@ -95,7 +96,7 @@ public class TownyChatHook implements ChatHook {
     }
 
     @Override
-    public void broadcastMessageToChannel(String channel, Component message) {
+    public void broadcastMessageToChannel(String channel, Component message, User author) {
         // get instance of TownyChat plugin
         Chat instance = (Chat) Bukkit.getPluginManager().getPlugin("TownyChat");
 

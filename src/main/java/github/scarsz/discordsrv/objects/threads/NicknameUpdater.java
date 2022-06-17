@@ -8,12 +8,12 @@
  * it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public
  * License along with this program.  If not, see
  * <http://www.gnu.org/licenses/gpl-3.0.html>.
@@ -28,6 +28,8 @@ import github.scarsz.discordsrv.util.DiscordUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
 import github.scarsz.discordsrv.util.PlaceholderUtil;
 import github.scarsz.discordsrv.util.PlayerUtil;
+import me.andarguy.cc.bukkit.CCBukkit;
+import me.andarguy.cc.common.models.UserAccount;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
@@ -73,7 +75,7 @@ public class NicknameUpdater extends Thread {
                     // skip vanished players
                     if (PlayerUtil.isVanished(onlinePlayer)) continue;
 
-                    String userId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(onlinePlayer.getUniqueId());
+                    String userId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(CCBukkit.getApi().getPlayerAccount(onlinePlayer.getName()).getUserId());
                     if (userId == null) continue;
 
                     User linkedUser = DiscordUtil.getJda().getUserById(userId);
@@ -137,6 +139,23 @@ public class NicknameUpdater extends Thread {
         nickname = MessageUtil.strip(nickname);
         if (nickname.length() > 32) {
             DiscordSRV.debug(Debug.NICKNAME_SYNC, "The new nickname for " + offlinePlayer.getName() + " (" + nickname + ") is too long, reducing it to 32 characters.");
+            nickname = nickname.substring(0, 32);
+        }
+        DiscordUtil.setNickname(member, nickname);
+    }
+
+    public void setNickname(Member member, UserAccount userAccount) {
+        if (member == null) return; // prevent NPE when called on join
+
+        String nickname = DiscordSRV.config().getString("NicknameSynchronizationFormat")
+                .replace("%displayname%", userAccount.getUsername())
+                .replace("%discord_name%", member.getUser().getName())
+                .replace("%discord_discriminator%", member.getUser().getDiscriminator());
+
+
+        nickname = MessageUtil.strip(nickname);
+        if (nickname.length() > 32) {
+            DiscordSRV.debug(Debug.NICKNAME_SYNC, "The new nickname for " + userAccount.getUsername() + " (" + nickname + ") is too long, reducing it to 32 characters.");
             nickname = nickname.substring(0, 32);
         }
         DiscordUtil.setNickname(member, nickname);

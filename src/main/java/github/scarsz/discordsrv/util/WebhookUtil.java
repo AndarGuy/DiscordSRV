@@ -25,6 +25,8 @@ package github.scarsz.discordsrv.util;
 import com.github.kevinsawicki.http.HttpRequest;
 import github.scarsz.discordsrv.Debug;
 import github.scarsz.discordsrv.DiscordSRV;
+import me.andarguy.cc.bukkit.CCBukkit;
+import me.andarguy.cc.common.models.PlayerAccount;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
@@ -44,6 +46,7 @@ import java.util.stream.Collectors;
 public class WebhookUtil {
 
     private static final Predicate<Webhook> LEGACY = hook -> hook.getName().endsWith("#1") || hook.getName().endsWith("#2");
+    private static final Map<String, String> channelWebhookUrls = new ConcurrentHashMap<>();
 
     static {
         try {
@@ -85,6 +88,30 @@ public class WebhookUtil {
         deliverMessage(channel, player, player.getDisplayName(), message, embed);
     }
 
+    private static void deliverMessage(TextChannel channel, String webhookName, String webhookAvatarUrl, String message, MessageEmbed embed, boolean allowSecondAttempt) {
+        if (channel == null) return;
+
+        String webhookUrl = getWebhookUrlToUseForChannel(channel);
+        if (webhookUrl == null) return;
+
+        Bukkit.getScheduler().runTaskAsynchronously(DiscordSRV.getPlugin(), () -> {
+            sendMessage(webhookUrl, channel, webhookName, webhookAvatarUrl, message, embed, allowSecondAttempt);
+        });
+    }
+
+    public static void deliverMessageBlocking(TextChannel channel, String webhookName, String webhookAvatarUrl, String message, MessageEmbed embed) {
+        deliverMessageBlocking(channel, webhookName, webhookAvatarUrl, message, embed, true);
+    }
+
+    private static void deliverMessageBlocking(TextChannel channel, String webhookName, String webhookAvatarUrl, String message, MessageEmbed embed, boolean allowSecondAttempt) {
+        if (channel == null) return;
+
+        String webhookUrl = getWebhookUrlToUseForChannel(channel);
+        if (webhookUrl == null) return;
+
+        sendMessage(webhookUrl, channel, webhookName, webhookAvatarUrl, message, embed, allowSecondAttempt);
+    }
+
     public static void deliverMessage(TextChannel channel, OfflinePlayer player, String displayName, String message, MessageEmbed embed) {
         Bukkit.getScheduler().runTaskAsynchronously(DiscordSRV.getPlugin(), () -> {
             String avatarUrl;
@@ -120,7 +147,9 @@ public class WebhookUtil {
                 }
             }
 
-            String userId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(player.getUniqueId());
+            PlayerAccount playerAccount = CCBukkit.getApi().getPlayerAccount(player.getName());
+
+            String userId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(playerAccount.getUserId());
             if (userId != null) {
                 Member member = DiscordUtil.getMemberById(userId);
                 username = username
@@ -151,75 +180,70 @@ public class WebhookUtil {
         deliverMessage(channel, webhookName, webhookAvatarUrl, message, embed, true);
     }
 
-    private static void deliverMessage(TextChannel channel, String webhookName, String webhookAvatarUrl, String message, MessageEmbed embed, boolean allowSecondAttempt) {
+    private static void sendMessage(String webhookUrl, TextChannel channel, String webhookName, String webhookAvatarUrl, String message, MessageEmbed embed, boolean allowSecondAttempt) {
         if (channel == null) return;
 
-        String webhookUrl = getWebhookUrlToUseForChannel(channel);
-        if (webhookUrl == null) return;
+        try {
+            JSONObject jsonObject = new JSONObject();
+            // workaround for a Discord block for using 'Clyde' in usernames
+            jsonObject.put("username", webhookName.replaceAll("((?i)c)l((?i)yde)", "$1I$2").replaceAll("(?i)(clyd)e", "$13"));
+            jsonObject.put("avatar_url", webhookAvatarUrl);
 
-        Bukkit.getScheduler().runTaskAsynchronously(DiscordSRV.getPlugin(), () -> {
-            try {
-                JSONObject jsonObject = new JSONObject();
-                // workaround for a Discord block for using 'Clyde' in usernames
-                jsonObject.put("username", webhookName.replaceAll("((?i)c)l((?i)yde)", "$1I$2").replaceAll("(?i)(clyd)e", "$13"));
-                jsonObject.put("avatar_url", webhookAvatarUrl);
-
-                if (StringUtils.isNotBlank(message)) jsonObject.put("content", message);
-                if (embed != null) {
-                    JSONArray jsonArray = new JSONArray();
-                    jsonArray.put(embed.toData().toMap());
-                    jsonObject.put("embeds", jsonArray);
-                }
-
-                JSONObject allowedMentions = new JSONObject();
-                Set<String> parse = MessageAction.getDefaultMentions().stream()
-                        .filter(Objects::nonNull)
-                        .map(Message.MentionType::getParseKey)
-                        .collect(Collectors.toSet());
-                allowedMentions.put("parse", parse);
-                jsonObject.put("allowed_mentions", allowedMentions);
-
-                DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Sending webhook payload: " + jsonObject);
-
-                HttpRequest request = HttpRequest.post(webhookUrl)
-                        .header("Content-Type", "application/json")
-                        .userAgent("DiscordSRV/" + DiscordSRV.getPlugin().getDescription().getVersion())
-                        .send(jsonObject.toString());
-
-                int status = request.code();
-                if (status == 404) {
-                    // 404 = Invalid Webhook (most likely to have been deleted)
-                    DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Webhook delivery returned 404, marking webhooks URLs as invalid to let them regenerate" + (allowSecondAttempt ? " & trying again" : ""));
-                    invalidWebhookUrlForChannel(channel); // tell it to get rid of the urls & get new ones
-                    if (allowSecondAttempt) deliverMessage(channel, webhookName, webhookAvatarUrl, message, embed, false);
-                    return;
-                }
-                String body = request.body();
-                try {
-                    JSONObject jsonObj = new JSONObject(body);
-                    if (jsonObj.has("code")) {
-                        // 10015 = unknown webhook, https://discord.com/developers/docs/topics/opcodes-and-status-codes#json-json-error-codes
-                        if (jsonObj.getInt("code") == 10015) {
-                            DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Webhook delivery returned 10015 (Unknown Webhook), marking webhooks url's as invalid to let them regenerate" + (allowSecondAttempt ? " & trying again" : ""));
-                            invalidWebhookUrlForChannel(channel); // tell it to get rid of the urls & get new ones
-                            if (allowSecondAttempt) deliverMessage(channel, webhookName, webhookAvatarUrl, message, embed, false);
-                            return;
-                        }
-                    }
-                } catch (Throwable ignored) {}
-                if (status == 204) {
-                    DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Received API response for webhook message delivery: " + status);
-                } else {
-                    DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Received unexpected API response for webhook message delivery: " + status + " for request: " + jsonObject.toString() + ", response: " + body);
-                }
-            } catch (Exception e) {
-                DiscordSRV.error("Failed to deliver webhook message to Discord: " + e.getMessage());
-                DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, e);
+            if (StringUtils.isNotBlank(message)) jsonObject.put("content", message);
+            if (embed != null) {
+                JSONArray jsonArray = new JSONArray();
+                jsonArray.put(embed.toData().toMap());
+                jsonObject.put("embeds", jsonArray);
             }
-        });
-    }
 
-    private static final Map<String, String> channelWebhookUrls = new ConcurrentHashMap<>();
+            JSONObject allowedMentions = new JSONObject();
+            Set<String> parse = MessageAction.getDefaultMentions().stream()
+                    .filter(Objects::nonNull)
+                    .map(Message.MentionType::getParseKey)
+                    .collect(Collectors.toSet());
+            allowedMentions.put("parse", parse);
+            jsonObject.put("allowed_mentions", allowedMentions);
+
+            DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Sending webhook payload: " + jsonObject);
+
+            HttpRequest request = HttpRequest.post(webhookUrl)
+                    .header("Content-Type", "application/json")
+                    .userAgent("DiscordSRV/" + DiscordSRV.getPlugin().getDescription().getVersion())
+                    .send(jsonObject.toString());
+
+            int status = request.code();
+            if (status == 404) {
+                // 404 = Invalid Webhook (most likely to have been deleted)
+                DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Webhook delivery returned 404, marking webhooks URLs as invalid to let them regenerate" + (allowSecondAttempt ? " & trying again" : ""));
+                invalidWebhookUrlForChannel(channel); // tell it to get rid of the urls & get new ones
+                if (allowSecondAttempt) deliverMessage(channel, webhookName, webhookAvatarUrl, message, embed, false);
+                return;
+            }
+            String body = request.body();
+            try {
+                JSONObject jsonObj = new JSONObject(body);
+                if (jsonObj.has("code")) {
+                    // 10015 = unknown webhook, https://discord.com/developers/docs/topics/opcodes-and-status-codes#json-json-error-codes
+                    if (jsonObj.getInt("code") == 10015) {
+                        DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Webhook delivery returned 10015 (Unknown Webhook), marking webhooks url's as invalid to let them regenerate" + (allowSecondAttempt ? " & trying again" : ""));
+                        invalidWebhookUrlForChannel(channel); // tell it to get rid of the urls & get new ones
+                        if (allowSecondAttempt)
+                            deliverMessage(channel, webhookName, webhookAvatarUrl, message, embed, false);
+                        return;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            if (status == 204) {
+                DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Received API response for webhook message delivery: " + status);
+            } else {
+                DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Received unexpected API response for webhook message delivery: " + status + " for request: " + jsonObject.toString() + ", response: " + body);
+            }
+        } catch (Exception e) {
+            DiscordSRV.error("Failed to deliver webhook message to Discord: " + e.getMessage());
+            DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, e);
+        }
+    }
 
     public static void invalidWebhookUrlForChannel(TextChannel textChannel) {
         String channelId = textChannel.getId();

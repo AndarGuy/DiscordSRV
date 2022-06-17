@@ -25,6 +25,7 @@ package github.scarsz.discordsrv.listeners;
 import github.scarsz.discordsrv.Debug;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.util.DiscordUtil;
+import me.andarguy.cc.bukkit.CCBukkit;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.event.EventHandler;
@@ -52,7 +53,7 @@ public class PlayerBanListener implements Listener {
                     }
 
                     DiscordSRV.debug(Debug.MINECRAFT_TO_DISCORD, "Handling ban for player " + event.getPlayer().getName() + " (" + event.getPlayer().getUniqueId() + ")");
-                    DiscordUtil.banMember(DiscordUtil.getMemberById(DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdBypassCache(event.getPlayer().getUniqueId())));
+                    DiscordUtil.banMember(DiscordUtil.getMemberById(DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdBypassCache(CCBukkit.getApi().getPlayerAccount(event.getPlayer().getUniqueId()).getUserId())));
                 }
             }
         }, 20);
@@ -66,7 +67,7 @@ public class PlayerBanListener implements Listener {
         }
 
         CompletableFuture.runAsync(() -> {
-            String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdBypassCache(event.getPlayer().getUniqueId());
+            String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdBypassCache(CCBukkit.getApi().getPlayerAccount(event.getPlayer().getUniqueId()).getUserId());
             if (discordId == null) return;
 
             DiscordSRV.getPlugin().getMainGuild().retrieveBanById(discordId)

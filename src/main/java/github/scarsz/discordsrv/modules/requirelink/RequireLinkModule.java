@@ -27,6 +27,9 @@ import github.scarsz.discordsrv.Debug;
 import github.scarsz.discordsrv.DiscordSRV;
 import github.scarsz.discordsrv.util.DiscordUtil;
 import github.scarsz.discordsrv.util.MessageUtil;
+import me.andarguy.cc.bukkit.CCBukkit;
+import me.andarguy.cc.common.models.PlayerAccount;
+import me.andarguy.cc.common.models.UserAccount;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -101,11 +104,12 @@ public class RequireLinkModule implements Listener {
                 return;
             }
 
-            String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdBypassCache(playerUuid);
+            PlayerAccount playerAccount = CCBukkit.getApi().getPlayerAccount(playerUuid);
+            String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordIdBypassCache(playerAccount.getUserId());
             if (discordId == null) {
                 Member botMember = DiscordSRV.getPlugin().getMainGuild().getSelfMember();
                 String botName = botMember.getEffectiveName() + "#" + botMember.getUser().getDiscriminator();
-                String code = DiscordSRV.getPlugin().getAccountLinkManager().generateCode(playerUuid);
+                String code = DiscordSRV.getPlugin().getAccountLinkManager().generateCode(playerAccount.getUserId());
                 String inviteLink = DiscordSRV.config().getString("DiscordInviteLink");
 
                 DiscordSRV.debug(Debug.REQUIRE_LINK, "Player " + playerName + " is NOT linked to a Discord account, denying login");

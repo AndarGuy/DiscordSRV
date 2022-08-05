@@ -741,6 +741,14 @@
             <systemPath>/Users/mikhail/Desktop/Minecraft Server/Stable Server/plugins/ChatTweaks.jar</systemPath>
             <version>1.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>me.andarguy</groupId>
+            <artifactId>awesomerewards</artifactId>
+            <scope>system</scope>
+            <systemPath>/Users/mikhail/Desktop/Minecraft Server/Stable Server/plugins/AwesomeRewards.jar</systemPath>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 
 </project>

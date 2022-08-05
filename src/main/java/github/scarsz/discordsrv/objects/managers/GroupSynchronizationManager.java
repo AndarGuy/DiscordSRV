@@ -145,7 +145,7 @@ public class GroupSynchronizationManager extends ListenerAdapter implements List
             return;
         }
 
-        String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(CCBukkit.getApi().getPlayerAccount(userAccount.getUsername()).getUserId());
+        String discordId = DiscordSRV.getPlugin().getAccountLinkManager().getDiscordId(userAccount.getId());
         if (discordId == null) {
             DiscordSRV.debug(Debug.GROUP_SYNC, "Tried to sync groups for player " + userAccount.getUsername() + " but their MC account is not linked to a Discord account. Synchronization cause: " + cause);
             return;

@@ -77,8 +77,6 @@ public class PlayerAdvancementDoneListener implements Listener {
     public void onPlayerAdvancementDone(PlayerAdvancementDoneEvent event) {
         final int EXPERIENCE_THRESHOLD = 35;
 
-        System.out.println(MiniMessage.miniMessage().serialize(event.message()));
-
         Player player = event.getPlayer();
         // return if advancement or player objects are knackered because this can apparently happen for some reason
         if (event.getAdvancement() == null || event.getAdvancement().getKey().getKey().contains("recipe/") || player == null) return;
